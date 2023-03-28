@@ -49,8 +49,9 @@ contract GeekLiquidityMining is Ownable, ReentrancyGuard {
             return;
         }
         uint256 multiplier = block.number - lastRewardBlock;
-        uint256 reward = (geekToken.totalSupply() * annualInterest * multiplier) / BLOCKS_PER_YEAR;
-        accRewardPerShare += reward * 1e12 / totalDeposited;
+        uint256 reward = ((annualInterest / 100) * multiplier) /
+            BLOCKS_PER_YEAR;
+        accRewardPerShare += (reward * 1e12) / totalDeposited;
         lastRewardBlock = block.number;
     }
 
@@ -59,7 +60,9 @@ contract GeekLiquidityMining is Ownable, ReentrancyGuard {
         UserInfo storage user = userInfo[msg.sender];
         updatePool();
         if (user.amount > 0) {
-            uint256 pending = user.amount * accRewardPerShare / 1e12 - user.rewardDebt;
+            uint256 pending = (user.amount * accRewardPerShare) /
+                1e12 -
+                user.rewardDebt;
             if (pending > 0) {
                 grewardToken.transfer(msg.sender, pending);
             }
@@ -69,16 +72,18 @@ contract GeekLiquidityMining is Ownable, ReentrancyGuard {
             user.amount += _amount;
             totalDeposited += _amount;
         }
-        user.rewardDebt = user.amount * accRewardPerShare / 1e12;
+        user.rewardDebt = (user.amount * accRewardPerShare) / 1e12;
         emit Deposit(msg.sender, _amount);
     }
 
-        // 用户提款
+    // 用户提款
     function withdraw(uint256 _amount) external nonReentrant {
         UserInfo storage user = userInfo[msg.sender];
         require(user.amount >= _amount, "withdraw: not enough balance");
         updatePool();
-        uint256 pending = user.amount.mul(accRewardPerShare).div(1e12).sub(user.rewardDebt);
+        uint256 pending = user.amount.mul(accRewardPerShare).div(1e12).sub(
+            user.rewardDebt
+        );
         if (pending > 0) {
             grewardToken.transfer(msg.sender, pending);
         }
@@ -95,7 +100,9 @@ contract GeekLiquidityMining is Ownable, ReentrancyGuard {
     function claimReward() external nonReentrant {
         UserInfo storage user = userInfo[msg.sender];
         updatePool();
-        uint256 pending = user.amount.mul(accRewardPerShare).div(1e12).sub(user.rewardDebt);
+        uint256 pending = user.amount.mul(accRewardPerShare).div(1e12).sub(
+            user.rewardDebt
+        );
         if (pending > 0) {
             grewardToken.transfer(msg.sender, pending);
         }
@@ -114,10 +121,14 @@ contract GeekLiquidityMining is Ownable, ReentrancyGuard {
         uint256 _accRewardPerShare = accRewardPerShare;
         if (block.number > lastRewardBlock && totalDeposited != 0) {
             uint256 multiplier = block.number.sub(lastRewardBlock);
-            uint256 reward = geekToken.totalSupply().mul(annualInterest).mul(multiplier).div(BLOCKS_PER_YEAR);
-            _accRewardPerShare = _accRewardPerShare.add(reward.mul(1e12).div(totalDeposited));
+            uint256 reward = ((annualInterest / 100) * multiplier) /
+                BLOCKS_PER_YEAR;
+            _accRewardPerShare = _accRewardPerShare.add(
+                reward.mul(1e12).div(totalDeposited)
+            );
         }
-        return user.amount.mul(_accRewardPerShare).div(1e12).sub(user.rewardDebt);
+        return
+            user.amount.mul(_accRewardPerShare).div(1e12).sub(user.rewardDebt);
     }
 
     // 紧急提款
@@ -136,4 +147,3 @@ contract GeekLiquidityMining is Ownable, ReentrancyGuard {
     event RewardClaimed(address indexed user, uint256 reward);
     event EmergencyWithdraw(address indexed user, uint256 amount);
 }
-
